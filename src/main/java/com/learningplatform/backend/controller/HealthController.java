@@ -14,6 +14,6 @@ public class HealthController {
 
 	@GetMapping("/health")
 	public HealthResponse health() {
-		return new HealthResponse("Backend is running");
+		return new HealthResponse("Backend running");
 	}
 }
