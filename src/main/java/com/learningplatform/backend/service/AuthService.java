@@ -6,39 +6,34 @@ import com.learningplatform.backend.dto.LoginRequest;
 import com.learningplatform.backend.dto.ResetPasswordRequest;
 import com.learningplatform.backend.dto.SignupRequest;
 import com.learningplatform.backend.dto.UserResponse;
-import com.learningplatform.backend.entity.PasswordResetCode;
+import com.learningplatform.backend.dto.VerifyTwoFactorRequest;
 import com.learningplatform.backend.entity.User;
-import com.learningplatform.backend.repository.PasswordResetCodeRepository;
+import com.learningplatform.backend.entity.VerificationPurpose;
 import com.learningplatform.backend.repository.UserRepository;
 import com.learningplatform.backend.security.JwtService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.security.SecureRandom;
-import java.time.LocalDateTime;
 
 @Service
 public class AuthService {
 
-	private static final SecureRandom RANDOM = new SecureRandom();
-	private static final int CODE_EXPIRY_MINUTES = 15;
-	private static final int MAX_CODE_ATTEMPTS = 5;
+	private static final int RESET_CODE_MINUTES = 15;
+	private static final int LOGIN_CODE_MINUTES = 5;
 
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final JwtService jwtService;
-	private final PasswordResetCodeRepository resetCodeRepository;
+	private final VerificationCodeService verificationCodeService;
 	private final EmailService emailService;
 
 	public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService,
-			PasswordResetCodeRepository resetCodeRepository, EmailService emailService) {
+			VerificationCodeService verificationCodeService, EmailService emailService) {
 		this.userRepository = userRepository;
 		this.passwordEncoder = passwordEncoder;
 		this.jwtService = jwtService;
-		this.resetCodeRepository = resetCodeRepository;
+		this.verificationCodeService = verificationCodeService;
 		this.emailService = emailService;
 	}
 
@@ -56,7 +51,8 @@ public class AuthService {
 		return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getPhone());
 	}
 
-	public AuthResponse login(LoginRequest request) {
+	/** Step 1 of login: check the password, then email a 2FA code. No token yet. */
+	public void login(LoginRequest request) {
 		String email = request.email().trim().toLowerCase();
 
 		// Same message for unknown email and wrong password, so attackers can't
@@ -68,7 +64,19 @@ public class AuthService {
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
 		}
 
-		return new AuthResponse(jwtService.generateToken(user.getEmail()));
+		String code = verificationCodeService.createCode(email, VerificationPurpose.LOGIN_2FA, LOGIN_CODE_MINUTES);
+		emailService.sendLoginCode(email, code);
+	}
+
+	/** Step 2 of login: a correct code is exchanged for the JWT token. */
+	public AuthResponse verifyTwoFactor(VerifyTwoFactorRequest request) {
+		String email = request.email().trim().toLowerCase();
+
+		if (!verificationCodeService.verifyCode(email, VerificationPurpose.LOGIN_2FA, request.code())) {
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired code");
+		}
+
+		return new AuthResponse(jwtService.generateToken(email));
 	}
 
 	public UserResponse getCurrentUser(String email) {
@@ -77,7 +85,6 @@ public class AuthService {
 		return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPhone());
 	}
 
-	@Transactional
 	public void forgotPassword(ForgotPasswordRequest request) {
 		String email = request.email().trim().toLowerCase();
 
@@ -87,41 +94,22 @@ public class AuthService {
 			return;
 		}
 
-		resetCodeRepository.deleteByEmail(email); // old codes stop working
-
-		String code = String.format("%06d", RANDOM.nextInt(1_000_000));
-		LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(CODE_EXPIRY_MINUTES);
-		resetCodeRepository.save(new PasswordResetCode(email, passwordEncoder.encode(code), expiresAt));
-
+		String code = verificationCodeService.createCode(email, VerificationPurpose.PASSWORD_RESET, RESET_CODE_MINUTES);
 		emailService.sendPasswordResetCode(email, code);
 	}
 
-	// noRollbackFor: keep the "attempts + 1" even though we then throw an error
-	@Transactional(noRollbackFor = ResponseStatusException.class)
+	// No @Transactional here on purpose: verifyCode() saves "attempts + 1" in its own
+	// transaction, so throwing the error below can't roll that counter back
 	public void resetPassword(ResetPasswordRequest request) {
 		String email = request.email().trim().toLowerCase();
-		ResponseStatusException invalidCode =
-				new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code");
 
-		PasswordResetCode resetCode = resetCodeRepository.findTopByEmailOrderByCreatedAtDesc(email)
-				.orElseThrow(() -> invalidCode);
-
-		if (resetCode.getExpiresAt().isBefore(LocalDateTime.now())
-				|| resetCode.getAttempts() >= MAX_CODE_ATTEMPTS) {
-			resetCodeRepository.deleteByEmail(email);
-			throw invalidCode;
+		if (!verificationCodeService.verifyCode(email, VerificationPurpose.PASSWORD_RESET, request.code())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code");
 		}
 
-		if (!passwordEncoder.matches(request.code(), resetCode.getCodeHash())) {
-			resetCode.setAttempts(resetCode.getAttempts() + 1);
-			resetCodeRepository.save(resetCode);
-			throw invalidCode;
-		}
-
-		User user = userRepository.findByEmail(email).orElseThrow(() -> invalidCode);
+		User user = userRepository.findByEmail(email)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid or expired code"));
 		user.setPassword(passwordEncoder.encode(request.newPassword()));
 		userRepository.save(user);
-
-		resetCodeRepository.deleteByEmail(email); // one-time use
 	}
 }

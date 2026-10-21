@@ -7,6 +7,7 @@ import com.learningplatform.backend.dto.MessageResponse;
 import com.learningplatform.backend.dto.ResetPasswordRequest;
 import com.learningplatform.backend.dto.SignupRequest;
 import com.learningplatform.backend.dto.UserResponse;
+import com.learningplatform.backend.dto.VerifyTwoFactorRequest;
 import com.learningplatform.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
-        return authService.login(request);
+    public MessageResponse login(@Valid @RequestBody LoginRequest request) {
+        authService.login(request);
+        return new MessageResponse("We've sent a login code to your email.");
+    }
+
+    @PostMapping("/verify-2fa")
+    public AuthResponse verifyTwoFactor(@Valid @RequestBody VerifyTwoFactorRequest request) {
+        return authService.verifyTwoFactor(request);
     }
 
     @PostMapping("/forgot-password")

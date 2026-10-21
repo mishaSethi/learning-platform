@@ -4,8 +4,8 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "password_reset_codes")
-public class PasswordResetCode {
+@Table(name = "verification_codes")
+public class VerificationCode {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -13,6 +13,10 @@ public class PasswordResetCode {
 
     @Column(nullable = false)
     private String email;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VerificationPurpose purpose;
 
     @Column(nullable = false)
     private String codeHash;
@@ -24,11 +28,12 @@ public class PasswordResetCode {
 
     private LocalDateTime createdAt;
 
-    public PasswordResetCode() {
+    public VerificationCode() {
     }
 
-    public PasswordResetCode(String email, String codeHash, LocalDateTime expiresAt) {
+    public VerificationCode(String email, VerificationPurpose purpose, String codeHash, LocalDateTime expiresAt) {
         this.email = email;
+        this.purpose = purpose;
         this.codeHash = codeHash;
         this.expiresAt = expiresAt;
     }
@@ -40,6 +45,7 @@ public class PasswordResetCode {
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
+    public VerificationPurpose getPurpose() { return purpose; }
     public String getCodeHash() { return codeHash; }
     public LocalDateTime getExpiresAt() { return expiresAt; }
     public int getAttempts() { return attempts; }
