@@ -1,7 +1,10 @@
 package com.learningplatform.backend.controller;
 
 import com.learningplatform.backend.dto.AuthResponse;
+import com.learningplatform.backend.dto.ForgotPasswordRequest;
 import com.learningplatform.backend.dto.LoginRequest;
+import com.learningplatform.backend.dto.MessageResponse;
+import com.learningplatform.backend.dto.ResetPasswordRequest;
 import com.learningplatform.backend.dto.SignupRequest;
 import com.learningplatform.backend.dto.UserResponse;
 import com.learningplatform.backend.service.AuthService;
@@ -28,5 +31,17 @@ public class AuthController {
     @PostMapping("/login")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/forgot-password")
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return new MessageResponse("If this email is registered, we've sent a reset code.");
+    }
+
+    @PostMapping("/reset-password")
+    public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return new MessageResponse("Password updated. You can now log in.");
     }
 }
