@@ -68,6 +68,9 @@ public class SecurityConfig {
         config.setAllowedHeaders(
             List.of("Authorization", "Content-Type")
         );
+        // Let browsers cache the CORS "preflight" check for an hour instead of
+        // sending an extra OPTIONS request before every API call
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =
             new UrlBasedCorsConfigurationSource();
