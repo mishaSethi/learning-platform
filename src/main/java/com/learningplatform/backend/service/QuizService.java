@@ -105,8 +105,14 @@ public class QuizService {
      * Also returns the current user's own row, so they always see where they stand.
      */
     public LeaderboardResponse getLeaderboard(String email) {
-        List<QuizAttemptRepository.LeaderboardRow> rows = attemptRepository.findLeaderboard();
-        List<User> users = userRepository.findAll();
+                List<User> users = userRepository.findAll();
+        Set<String> registered = users.stream().map(User::getEmail).collect(Collectors.toSet());
+
+        // Only count attempts by users who still have an account
+        List<QuizAttemptRepository.LeaderboardRow> rows = attemptRepository.findLeaderboard().stream()
+                .filter(row -> registered.contains(row.getEmail()))
+                .toList();
+
 
         Map<String, String> names = users.stream()
                 .collect(Collectors.toMap(User::getEmail, User::getName));
