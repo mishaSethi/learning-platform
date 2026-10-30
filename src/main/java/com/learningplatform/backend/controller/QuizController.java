@@ -1,5 +1,6 @@
 package com.learningplatform.backend.controller;
 
+import com.learningplatform.backend.dto.LeaderboardResponse;
 import com.learningplatform.backend.dto.QuizAttemptResponse;
 import com.learningplatform.backend.dto.QuizQuestionResponse;
 import com.learningplatform.backend.dto.QuizResultResponse;
@@ -34,5 +35,10 @@ public class QuizController {
     @GetMapping("/attempts")
     public List<QuizAttemptResponse> attempts(Authentication authentication) {
         return quizService.getMyAttempts(authentication.getName());
+    }
+
+    @GetMapping("/leaderboard")
+    public LeaderboardResponse leaderboard(Authentication authentication) {
+        return quizService.getLeaderboard(authentication.getName());
     }
 }
