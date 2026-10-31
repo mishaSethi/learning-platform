@@ -48,7 +48,8 @@ public class AuthService {
 		user.setPassword(passwordEncoder.encode(request.password()));
 
 		User saved = userRepository.save(user);
-		return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getPhone());
+				return new UserResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getPhone(), false);
+
 	}
 
 	/** Step 1 of login: check the password, then email a 2FA code. No token yet. */
@@ -79,11 +80,11 @@ public class AuthService {
 		return new AuthResponse(jwtService.generateToken(email));
 	}
 
-	public UserResponse getCurrentUser(String email) {
-		User user = userRepository.findByEmail(email)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-		return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPhone());
-	}
+	// public UserResponse getCurrentUser(String email) {
+	// 	User user = userRepository.findByEmail(email)
+	// 			.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+	// 	return new UserResponse(user.getId(), user.getName(), user.getEmail(), user.getPhone());
+	// }
 
 	public void forgotPassword(ForgotPasswordRequest request) {
 		String email = request.email().trim().toLowerCase();
