@@ -1,4 +1,4 @@
 /**
- * JPA entities of the Learning Platform backend.
+ * JPA entities of the Himalayan & Skies backend.
  */
 package com.learningplatform.backend.entity;

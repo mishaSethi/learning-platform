@@ -1,4 +1,4 @@
-# Learning Platform - Backend
+# Himalayan & Skies - Backend
 
 [![Backend CI](https://github.com/mishaSethi/learning-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/mishaSethi/learning-platform/actions/workflows/ci.yml)
 

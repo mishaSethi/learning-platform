@@ -54,7 +54,7 @@ public class EmailService {
 
     private void sendEmail(String toEmail, String subject, String html) {
         Map<String, Object> body = Map.of(
-                "sender", Map.of("name", "Learning Platform", "email", fromEmail),
+                "sender", Map.of("name", "Himalayan & Skies", "email", fromEmail),
                 "to", List.of(Map.of("email", toEmail)),
                 "subject", subject,
                 "htmlContent", html
